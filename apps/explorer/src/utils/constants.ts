@@ -40,6 +40,20 @@ export const appConstants: Record<(typeof supportedChains)[number]["id"], ChainC
         url: "https://forest-explorer.chainsafe.dev/faucet/calibnet_usdfc",
       },
     ],
+    knownOperators: [
+      {
+        address: CONTRACT_ADDRESSES.WARM_STORAGE.calibration,
+        label: "Warm Storage Service",
+      },
+    ],
+    knownTokens: [
+      {
+        address: CONTRACT_ADDRESSES.USDFC.calibration,
+        symbol: "USDFC",
+        name: "USD for Filecoin Community",
+        decimals: 18,
+      },
+    ],
   },
   [mainnet.id]: {
     chain: mainnet,
@@ -51,5 +65,19 @@ export const appConstants: Record<(typeof supportedChains)[number]["id"], ChainC
         abi: paymentsAbi,
       },
     },
+    knownOperators: [
+      {
+        address: CONTRACT_ADDRESSES.WARM_STORAGE.mainnet,
+        label: "Warm Storage Service",
+      },
+    ],
+    knownTokens: [
+      {
+        address: CONTRACT_ADDRESSES.USDFC.mainnet,
+        symbol: "USDFC",
+        name: "USD for Filecoin Community",
+        decimals: 18,
+      },
+    ],
   },
 } as const;

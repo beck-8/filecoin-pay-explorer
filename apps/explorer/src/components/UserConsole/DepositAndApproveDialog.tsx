@@ -1,4 +1,5 @@
 import { Button as FilecoinButton } from "@filecoin-foundation/ui-filecoin/Button";
+import { Badge } from "@filecoin-pay/ui/components/badge";
 import { Button } from "@filecoin-pay/ui/components/button";
 import {
   Dialog,
@@ -10,12 +11,13 @@ import {
 } from "@filecoin-pay/ui/components/dialog";
 import { Input } from "@filecoin-pay/ui/components/input";
 import { Label } from "@filecoin-pay/ui/components/label";
-import { AlertCircle, CheckCircle2, Loader2, Wallet } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronDown, Loader2, Wallet } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { erc20Abi, formatUnits, type Hex, isAddress, maxUint256, parseUnits } from "viem";
 import { useAccount, usePublicClient, useReadContract, useReadContracts, useWalletClient } from "wagmi";
 import { useContractTransaction } from "@/hooks/useContractTransaction";
 import useSynapse from "@/hooks/useSynapse";
+import { formatAddress } from "@/utils/formatter";
 import { getPermitSignature } from "@/utils/permit";
 
 interface DepositAndApproveDialogProps {
@@ -31,8 +33,10 @@ interface TokenDetails {
 
 const DepositAndApproveDialog: React.FC<DepositAndApproveDialogProps> = ({ open, onOpenChange }) => {
   const [operatorInput, setOperatorInput] = useState("");
+  const [showOperatorDropdown, setShowOperatorDropdown] = useState(false);
   const operatorRef = useRef<HTMLDivElement>(null);
   const [tokenInput, setTokenInput] = useState("");
+  const [showTokenDropdown, setShowTokenDropdown] = useState(false);
   const [tokenAmount, setTokenAmount] = useState("");
   const tokenRef = useRef<HTMLDivElement>(null);
   const [lockupAllowance, setLockupAllowance] = useState("");
@@ -52,6 +56,21 @@ const DepositAndApproveDialog: React.FC<DepositAndApproveDialogProps> = ({ open,
     explorerUrl: constants.chain.blockExplorers?.default.url,
   });
 
+  // Click outside handlers for dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (operatorRef.current && !operatorRef.current.contains(event.target as Node)) {
+        setShowOperatorDropdown(false);
+      }
+      if (tokenRef.current && !tokenRef.current.contains(event.target as Node)) {
+        setShowTokenDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   useEffect(() => {
     if (!open) {
       setOperatorInput("");
@@ -60,6 +79,8 @@ const DepositAndApproveDialog: React.FC<DepositAndApproveDialogProps> = ({ open,
       setRateAllowance("");
       setMaxLockupPeriod("");
       setIsUnlimited(false);
+      setShowOperatorDropdown(false);
+      setShowTokenDropdown(false);
     }
   }, [open]);
 
@@ -228,22 +249,65 @@ const DepositAndApproveDialog: React.FC<DepositAndApproveDialogProps> = ({ open,
         </DialogHeader>
 
         <div className='grid gap-6 py-4'>
-          {/* Token Input - Unified with Auto-fetch */}
+          {/* Token Input - with known tokens dropdown */}
           <div className='grid gap-3'>
             <Label htmlFor='token'>Token Address</Label>
             <div className='relative' ref={tokenRef}>
               <div className='relative'>
                 <Input
                   id='token'
-                  placeholder='Enter token address 0x...'
+                  placeholder='Enter token address or select from list...'
                   value={tokenInput}
                   onChange={(e) => {
                     setTokenInput(e.target.value);
+                    setShowTokenDropdown(true);
                   }}
+                  onFocus={() => setShowTokenDropdown(true)}
                   disabled={isSubmitting}
                   className='pr-10'
                 />
+                {constants.knownTokens.length > 0 && (
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='sm'
+                    className='absolute right-0 top-0 h-full px-3'
+                    onClick={() => setShowTokenDropdown(!showTokenDropdown)}
+                    disabled={isSubmitting}
+                  >
+                    <ChevronDown className='h-4 w-4 text-muted-foreground' />
+                  </Button>
+                )}
               </div>
+
+              {/* Token Dropdown */}
+              {showTokenDropdown && constants.knownTokens.length > 0 && (
+                <div className='absolute z-50 mt-1 w-full rounded-md border bg-popover p-1 shadow-md'>
+                  <div className='max-h-[200px] overflow-auto'>
+                    {constants.knownTokens.map((token) => (
+                      <button
+                        key={token.address}
+                        type='button'
+                        className='w-full text-left px-3 py-2 text-sm rounded hover:bg-accent transition-colors'
+                        onClick={() => {
+                          setTokenInput(token.address);
+                          setShowTokenDropdown(false);
+                        }}
+                      >
+                        <div className='flex items-center justify-between'>
+                          <div>
+                            <div className='font-medium'>{token.symbol}</div>
+                            <div className='text-xs text-muted-foreground'>{token.name}</div>
+                          </div>
+                          <Badge variant='outline' className='text-xs'>
+                            {token.decimals} decimals
+                          </Badge>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Token Validation & Details */}
               {tokenInput && (
@@ -343,22 +407,58 @@ const DepositAndApproveDialog: React.FC<DepositAndApproveDialogProps> = ({ open,
             </div>
           )}
 
-          {/* Operator Input - Unified */}
+          {/* Operator Input - with known operators dropdown */}
           <div className='grid gap-3'>
             <Label htmlFor='operator'>Operator Address</Label>
             <div className='relative' ref={operatorRef}>
               <div className='relative'>
                 <Input
                   id='operator'
-                  placeholder='Enter Operator address 0x...'
+                  placeholder='Enter address or select from list...'
                   value={operatorInput}
                   onChange={(e) => {
                     setOperatorInput(e.target.value);
+                    setShowOperatorDropdown(true);
                   }}
+                  onFocus={() => setShowOperatorDropdown(true)}
                   disabled={isSubmitting}
                   className='pr-10'
                 />
+                {constants.knownOperators.length > 0 && (
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='sm'
+                    className='absolute right-0 top-0 h-full px-3'
+                    onClick={() => setShowOperatorDropdown(!showOperatorDropdown)}
+                    disabled={isSubmitting}
+                  >
+                    <ChevronDown className='h-4 w-4 text-muted-foreground' />
+                  </Button>
+                )}
               </div>
+
+              {/* Operator Dropdown */}
+              {showOperatorDropdown && constants.knownOperators.length > 0 && (
+                <div className='absolute z-50 mt-1 w-full rounded-md border bg-popover p-1 shadow-md'>
+                  <div className='max-h-[200px] overflow-auto'>
+                    {constants.knownOperators.map((op) => (
+                      <button
+                        key={op.address}
+                        type='button'
+                        className='w-full text-left px-3 py-2 text-sm rounded hover:bg-accent transition-colors'
+                        onClick={() => {
+                          setOperatorInput(op.address);
+                          setShowOperatorDropdown(false);
+                        }}
+                      >
+                        <div className='font-medium'>{op.label}</div>
+                        <div className='font-mono text-xs text-muted-foreground'>{formatAddress(op.address)}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Operator Validation */}
               {operatorInput && (

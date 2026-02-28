@@ -27,6 +27,18 @@ export interface FaucetProvider {
   url: string;
 }
 
+export interface KnownOperator {
+  address: Hex;
+  label: string;
+}
+
+export interface KnownToken {
+  address: Hex;
+  symbol: string;
+  name: string;
+  decimals: number;
+}
+
 export type ChainConstants = {
   chain: (typeof supportedChains)[number];
   label: string;
@@ -38,6 +50,8 @@ export type ChainConstants = {
     };
   };
   faucets?: FaucetProvider[];
+  knownOperators: KnownOperator[];
+  knownTokens: KnownToken[];
 };
 
 export type AccountInfo = [bigint, bigint, bigint, bigint];
